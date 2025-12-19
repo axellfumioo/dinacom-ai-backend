@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     secret_token: str
 
-    openai_apikey: str
+    groq_apikey: str
 
     class Config:
         env_file = ".env"
