@@ -1,4 +1,4 @@
-from app.prompts.orchestrator import build_chat_prompt
+from app.prompts.chat_orchestrator import build_chat_prompt
 
 class AIOrchestrator:
     def __init__(self, vision, llm):
