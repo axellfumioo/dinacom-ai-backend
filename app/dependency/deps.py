@@ -1,18 +1,5 @@
 from fastapi import Header, HTTPException, status
 from app.core.config import settings
-from app.services.vision_service import VisionService
-from app.services.llm_service import LLMService
-from app.services.ai_chat_orchestrator import AIOrchestrator
-from app.services.ai_foodscan_orchestrator import AIFoodScanOrchestrator
-
-def get_ai_service():
-    return AIOrchestrator(
-        vision=VisionService(),
-        llm=LLMService()
-    )
-
-def get_foodscan_service():
-    return AIFoodScanOrchestrator()
 
 def verify_token(authorization: str = Header(...)):
     """
