@@ -18,6 +18,7 @@ class DecisionService:
         
         try:
             result = json.loads(raw)
+            result["user_message"] = user_message
         except json.JSONDecodeError:
             return ValueError(
                 f"Decision AI returned invalid JSON: \n{raw}"
