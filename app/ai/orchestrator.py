@@ -10,21 +10,17 @@ class Orchestrator:
         self.llm = GeminiClient()
 
     def handle_chat(self, user_message: str) -> str:
-        # 1. Decision dulu
         decision = self.decision.run(user_message)
 
         context_blocks = []
 
-        # 2. Kalau butuh search
         if decision["need_search"]:
             for query in decision["queries"]:
                 search_result = search_and_extract(query)
                 context_blocks.append(search_result)
 
-        # 3. Gabung context jadi prompt
         prompt = self._build_prompt(user_message, context_blocks)
 
-        # 4. Kirim ke LLM
         return self.llm.generate(prompt)
 
     def _build_prompt(self, user_message: str, contexts: list) -> str:
