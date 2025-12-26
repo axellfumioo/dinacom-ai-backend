@@ -20,6 +20,8 @@ NO markdown.
 Format:
 {
   "need_search": true | false,
+  "risk_level": "low" | "medium" | "high",
+  "request_type": "educational" | "factual" | "personal_concern" | "unsafe_request",
   "queries": ["query1", "query2", "query3"]
 }
 

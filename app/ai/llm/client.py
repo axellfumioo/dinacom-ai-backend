@@ -1,6 +1,7 @@
 from openai import OpenAI
 from google.genai import types
 from dotenv import load_dotenv
+from app.ai.llm.root_prompts.loader import load_prompt
 import os
 
 load_dotenv()
@@ -32,9 +33,11 @@ class OpenAIClient:
         }
     
     def generate(self, prompt: str) -> str:
+        root_prompt = load_prompt("health.prompt")
         response = self.client.chat.completions.create(
             model=self.main_model,
             messages=[
+                {"role": "system", "content": root_prompt},
                 {"role": "user", "content": prompt}
             ],
             **self.main_config
@@ -53,7 +56,7 @@ class OpenAIClient:
             ]
             **self.tools_config
         )
-        
+            
         if not response or not response.text:
             raise RuntimeError("Empty response from OpenAI")
         
