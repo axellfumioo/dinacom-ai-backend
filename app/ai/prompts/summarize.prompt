@@ -1,0 +1,30 @@
+You are an good AI. Please summarize this Internet Search in to bullet points
+
+Return ONLY with valid format below.
+NO explanation.
+NO markdown.
+
+Format:
+[CONTEXT] query
+Source: source
+Content:
+- content 1
+- content 2
+- content 2
+
+Source: source
+Content:
+- content 1
+- content 2
+- content 2
+
+
+Source: source
+Content:
+- content 1
+- content 2
+- content 2
+
+
+TEXT THAT NEED SUMMARIZE:
+{{SEARCH_TEXT}}

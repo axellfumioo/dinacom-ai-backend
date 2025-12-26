@@ -4,7 +4,7 @@ from app.ai.prompts.loader import load_prompt
 
 class DecisionService:
     def __init__(self):
-        self.llm = GeminiClient(temperature=0)
+        self.llm = GeminiClient()
     
     def run(self, user_message: str) -> dict:
         prompt_template = load_prompt("decision.prompt")
@@ -14,7 +14,7 @@ class DecisionService:
             user_message
         )
         
-        raw = self.llm.generate(prompt)
+        raw = self.llm.tools(prompt)
         
         try:
             result = json.loads(raw)

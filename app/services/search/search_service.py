@@ -16,7 +16,7 @@ def search_and_extract(query: str):
         text = extract_web_content(url)
         contents.append({
             "url": url,
-            "content": text[:5000]
+            "content": text[:3000]
         })
 
     result = {
