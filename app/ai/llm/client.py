@@ -1,57 +1,60 @@
-from google import genai
+from openai import OpenAI
 from google.genai import types
-from typing import Optional
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-class GeminiClient:
+class OpenAIClient:
     def __init__(
         self,
-        main_model: str = "gemini-2.5-pro",
-        tools_model: str = "gemini-2.0-flash-lite",
+        main_model: str = "gpt-5-mini",
+        tools_model: str = "gpt-5-nano",
     ):
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key = os.getenv("OPENAI_API")
         if not api_key:
-            raise RuntimeError("GEMINI_API not found in env")
+            raise RuntimeError("OPENAI_API not found in env")
         
-        self.client = genai.Client(api_key=api_key)
+        self.client = OpenAI(api_key=api_key)
         
         # Main Model
         self.main_model = main_model
-        self.main_config = types.GenerateContentConfig(
-            temperature=0.3,
-            max_output_tokens=2048
-        )
+        self.main_config = {
+            "temperature": 0.3,
+            "max_tokens": 2048,
+        }
         
         # tools Model
         self.tools_model = tools_model
-        self.tools_config = types.GenerateContentConfig(
-            temperature=0.0,
-            max_output_tokens=1024
-        )
+        self.tools_config = {
+            "temperature": 0.0,
+            "max_output_tokens": 1024
+        }
     
     def generate(self, prompt: str) -> str:
-        response = self.client.models.generate_content(
+        response = self.client.chat.completions.create(
             model=self.main_model,
-            contents=prompt,
-            config=self.main_config,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            **self.main_config
         )
         
-        if not response or not response.text:
-            raise RuntimeError("Empty response from gemini")
+        if not response or not response.choices:
+            raise RuntimeError("Empty response from OpenAI")
         
-        return response.text.strip()
+        return response.choices[0].message.content.strip()
     
     def tools(self, prompt: str) -> str:
-        response = self.client.models.generate_content(
+        response = self.client.chat.completions.create(
             model=self.tools_model,
-            contents=prompt,
-            config=self.tools_config,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+            **self.tools_config
         )
         
         if not response or not response.text:
-            raise RuntimeError("Empty response from gemini")
+            raise RuntimeError("Empty response from OpenAI")
         
-        return response.text.strip()
+        return response.choices[0].message.content.strip()

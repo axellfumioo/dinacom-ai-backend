@@ -1,10 +1,10 @@
 import json
-from app.ai.llm.client import GeminiClient
+from app.ai.llm.client import OpenAIClient
 from app.ai.prompts.loader import load_prompt
 
 class DecisionService:
     def __init__(self):
-        self.llm = GeminiClient()
+        self.llm = OpenAIClient()
     
     def run(self, user_message: str) -> dict:
         prompt_template = load_prompt("decision.prompt")

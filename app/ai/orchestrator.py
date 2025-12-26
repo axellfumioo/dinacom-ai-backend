@@ -1,6 +1,6 @@
 # app/ai/orchestrator.py
 from app.ai.decision import DecisionService
-from app.ai.llm.client import GeminiClient
+from app.ai.llm.client import OpenAIClient
 from app.services.search.search_service import search_and_extract
 from app.ai.prompts.loader import load_prompt
 from app.ai.clean_text import CleanText
@@ -8,7 +8,7 @@ from app.ai.clean_text import CleanText
 class Orchestrator:
     def __init__(self):
         self.decision = DecisionService()
-        self.llm = GeminiClient()
+        self.llm = OpenAIClient()
         self.cleantext = CleanText()
 
     def handle_chat(self, user_message: str) -> str:

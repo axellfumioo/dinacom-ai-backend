@@ -1,6 +1,6 @@
-from app.ai.llm.client import GeminiClient
+from app.ai.llm.client import OpenAIClient
 
-llm = GeminiClient()
+llm = OpenAIClient()
 
 print(
     llm.generate("balas dengan JSON: {\"ok\": true}")
