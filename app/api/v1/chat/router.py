@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from app.ai.orchestrator import Orchestrator
+from app.dependency.deps import verify_token
 
 router = APIRouter()
 orchestrator = Orchestrator()
@@ -12,7 +13,7 @@ class ChatResponse(BaseModel):
     response: str
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, _: bool = Depends(verify_token)):
     try:
         if not request.message.strip():
             raise HTTPException(status_code=400, detail="Message tidak boleh kosong")
