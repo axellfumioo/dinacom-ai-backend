@@ -21,15 +21,13 @@ class OpenAIClient:
         # Main Model
         self.main_model = main_model
         self.main_config = {
-            "temperature": 0.3,
-            "max_tokens": 2048,
+            "max_completion_tokens": 2048,
         }
         
         # tools Model
         self.tools_model = tools_model
         self.tools_config = {
-            "temperature": 0.0,
-            "max_output_tokens": 1024
+            "max_completion_tokens": 2048
         }
     
     def generate(self, prompt: str) -> str:
@@ -53,11 +51,15 @@ class OpenAIClient:
             model=self.tools_model,
             messages=[
                 {"role": "user", "content": prompt}
-            ]
+            ],
             **self.tools_config
         )
             
-        if not response or not response.text:
+        if not response or not response.choices:
             raise RuntimeError("Empty response from OpenAI")
         
-        return response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        if not content:
+            raise RuntimeError(f"Empty content from OpenAI. Response: {response}")
+        
+        return content.strip()

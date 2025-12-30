@@ -3,6 +3,7 @@ from app.ai.llm.client import OpenAIClient
 from app.services.search.search_service import search_and_extract
 from app.ai.prompts.loader import load_prompt
 from app.ai.clean_text import CleanText
+from typing import List, Dict, Optional
 
 class Orchestrator:
     def __init__(self):
@@ -10,26 +11,27 @@ class Orchestrator:
         self.llm = OpenAIClient()
         self.cleantext = CleanText()
 
-    def handle_chat(self, user_message: str) -> str:
+    def handle_chat(self, user_message: str, chat_history: Optional[List[Dict[str, str]]] = None ) -> str:
         decision = self.decision.run(user_message)
 
         context_blocks = []
         
-        # print(decision)
+        print(decision)
         if decision["need_search"]:
             for query in decision["queries"]:
                 search_result = search_and_extract(query)
                 context_blocks.append(search_result)
 
-        # print(context_blocks)
-        prompt = self._build_prompt(user_message, context_blocks)
+        print(context_blocks)
+        prompt = self._build_prompt(user_message, context_blocks, chat_history)
         
+        print(prompt)
         return self.llm.generate(prompt)
-        # return prompt
 
-    def _build_prompt(self, user_message: str, contexts: list) -> str:
+    def _build_prompt(self, user_message: str, contexts: list, chat_history="") -> str:
         seen_urls = set()
         context_text = ""
+        clean_prompt = ""
         
         prompt_template = load_prompt("answer.prompt")
         
@@ -52,11 +54,14 @@ class Orchestrator:
                 
                 context_text += f"- Source: {r['url']}\n"
                 context_text += f"  Content: {r['content']}\n"
+                added = True
                 
-            added = True
-        
-        clean_prompt = self.cleantext.clean(context_text)
         prompt = prompt_template.replace("{{user_message}}", user_message)
-        prompt = prompt.replace("{{context_text}}", clean_prompt)
+        
+        if (context_text != ""):
+            clean_prompt = self.cleantext.clean(context_text)
 
-        return prompt
+        prompt = prompt.replace("{{context_text}}", clean_prompt)
+        final_prompt = prompt.replace("{{user_history}}", chat_history or "")
+
+        return final_prompt
