@@ -8,5 +8,5 @@ from app.ai.orchestrator import Orchestrator
 
 orch = Orchestrator()
 
-response = orch.handle_chat("harga emas hari ini")
+response = orch.handle_chat("sakit pinggang solusi nya apa ya")
 print(response)

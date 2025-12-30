@@ -7,4 +7,4 @@ def load_prompt(filename: str) -> str:
     if not path.exists():
         raise FileNotFoundError(f"Prompt not found: {filename}")
     
-    return path.read_text()
+    return path.read_text(encoding="utf-8")
