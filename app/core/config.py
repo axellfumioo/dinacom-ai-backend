@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     secret_token: str
 
     groq_apikey: str
+    google_cse_id: str
+    google_api_key: str
+    openai_api: str
+    google_search_count: str
 
     class Config:
         env_file = ".env"
