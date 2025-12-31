@@ -4,29 +4,110 @@ from app.services.search.search_service import search_and_extract
 from app.ai.prompts.loader import load_prompt
 from app.ai.clean_text import CleanText
 from typing import List, Dict, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+import time
+import hashlib
+
+from app.services.search.cache import TTLCache
 
 class Orchestrator:
     def __init__(self):
         self.decision = DecisionService()
         self.llm = OpenAIClient()
         self.cleantext = CleanText()
+        self._profile = os.getenv("PROFILE_LATENCY", "0") == "1"
+        self._debug = os.getenv("ORCH_DEBUG", "0") == "1"
+        self._max_search_queries = int(os.getenv("MAX_SEARCH_QUERIES", "3"))
 
-    def handle_chat(self, user_message: str, chat_history: Optional[List[Dict[str, str]]] = None ) -> str:
+        self._max_context_chars = int(os.getenv("ORCH_MAX_CONTEXT_CHARS", "8000"))
+        self._max_history_chars = int(os.getenv("ORCH_MAX_HISTORY_CHARS", "4000"))
+        self._max_source_chars = int(os.getenv("ORCH_MAX_SOURCE_CHARS", "1800"))
+
+        llm_cache_ttl = int(os.getenv("ORCH_LLM_CACHE_TTL_S", "0"))
+        self._llm_cache = TTLCache(ttl=max(1, llm_cache_ttl)) if llm_cache_ttl > 0 else None
+
+    def _truncate(self, text: str, max_chars: int) -> str:
+        if not text or max_chars <= 0:
+            return ""
+        if len(text) <= max_chars:
+            return text
+        return text[-max_chars:]
+
+    def _format_history(self, chat_history: Optional[List[Dict[str, str]]]) -> str:
+        if not chat_history:
+            return ""
+        
+        parts: list[str] = []
+        total = 0
+        for msg in reversed(chat_history):
+            role = (msg or {}).get("role", "user")
+            content = (msg or {}).get("content", "")
+            line = f"{role}: {content}\n"
+            if total + len(line) > self._max_history_chars:
+                break
+            parts.append(line)
+            total += len(line)
+        return "".join(reversed(parts))
+
+    def handle_chat(self, user_message: str, chat_history: Optional[List[Dict[str, str]]] = None) -> str:
+        t0 = time.perf_counter()
         decision = self.decision.run(user_message)
+        t_decision = time.perf_counter()
+
+        if self._debug:
+            print(decision)
 
         context_blocks = []
         
-        print(decision)
         if decision["need_search"]:
-            for query in decision["queries"]:
-                search_result = search_and_extract(query)
-                context_blocks.append(search_result)
+            queries = decision.get("queries") or []
+            if self._max_search_queries > 0:
+                queries = queries[: self._max_search_queries]
 
-        print(context_blocks)
+            with ThreadPoolExecutor(max_workers=min(5, max(1, len(queries)))) as executor:
+                future_to_query = {executor.submit(search_and_extract, query): query for query in queries}
+                for future in as_completed(future_to_query):
+                    try:
+                        search_result = future.result()
+                        context_blocks.append(search_result)
+                    except Exception as exc:
+                        print(f'Search generated an exception: {exc}')
+
+        if self._debug:
+            print(context_blocks)
+
+        t_search = time.perf_counter()
+
         prompt = self._build_prompt(user_message, context_blocks, chat_history)
+
+        if self._debug:
+            print(prompt)
+
+        t_prompt = time.perf_counter()
         
-        print(prompt)
-        return self.llm.generate(prompt)
+        if self._llm_cache is not None:
+            key = hashlib.sha256(prompt.encode("utf-8", errors="ignore")).hexdigest()
+            cached = self._llm_cache.get(key)
+            if cached:
+                answer = cached
+            else:
+                answer = self.llm.generate(prompt)
+                self._llm_cache.set(key, answer)
+        else:
+            answer = self.llm.generate(prompt)
+        t_done = time.perf_counter()
+
+        if self._profile:
+            print(
+                "LATENCY(ms): "
+                f"decision={(t_decision - t0) * 1000:.0f} "
+                f"search={(t_search - t_decision) * 1000:.0f} "
+                f"prompt={(t_prompt - t_search) * 1000:.0f} "
+                f"llm={(t_done - t_prompt) * 1000:.0f} "
+                f"total={(t_done - t0) * 1000:.0f}"
+            )
+        return answer
 
     def _build_prompt(self, user_message: str, contexts: list, chat_history="") -> str:
         seen_urls = set()
@@ -53,15 +134,29 @@ class Orchestrator:
                 seen_urls.add(url)
                 
                 context_text += f"- Source: {r['url']}\n"
-                context_text += f"  Content: {r['content']}\n"
+                content_trimmed = (r.get("content", "") or "")[: self._max_source_chars]
+                context_text += f"  Content: {content_trimmed}\n"
                 added = True
                 
         prompt = prompt_template.replace("{{user_message}}", user_message)
         
-        if (context_text != ""):
+        
+        if context_text != "" and len(context_text) > 8000:
             clean_prompt = self.cleantext.clean(context_text)
+        else:
+            clean_prompt = context_text
+
+        clean_prompt = self._truncate(clean_prompt, self._max_context_chars)
 
         prompt = prompt.replace("{{context_text}}", clean_prompt)
-        final_prompt = prompt.replace("{{user_history}}", chat_history or "")
+        
+        
+        history_text = ""
+        if isinstance(chat_history, list):
+            history_text = self._format_history(chat_history)
+        else:
+            history_text = self._truncate(chat_history or "", self._max_history_chars)
+            
+        final_prompt = prompt.replace("{{user_history}}", history_text)
 
         return final_prompt

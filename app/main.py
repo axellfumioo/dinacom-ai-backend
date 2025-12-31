@@ -1,5 +1,13 @@
+import sys
+from pathlib import Path
+
 from dotenv import load_dotenv
-load_dotenv() 
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+	sys.path.insert(0, str(PROJECT_ROOT))
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 from fastapi import FastAPI
 from app.api.v1.router import api_router
