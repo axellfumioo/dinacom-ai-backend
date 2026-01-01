@@ -9,8 +9,8 @@ load_dotenv()
 class OpenAIClient:
     def __init__(
         self,
-        main_model: str = "gpt-4o-mini",
-        tools_model: str = "gpt-4o-mini",
+        main_model: str = "gpt-5",
+        tools_model: str = "gpt-5-nano",
     ):
         api_key = os.getenv("OPENAI_API")
         if not api_key:
@@ -164,7 +164,7 @@ class OpenAIClient:
     ) -> str:
 
         response = self.client.chat.completions.create(
-            model=self.main_model,
+            model="gpt-5.2",
             messages=[
                 {
                     "role": "user",
