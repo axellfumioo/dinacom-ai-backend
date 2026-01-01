@@ -8,6 +8,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import time
 import hashlib
+import json
+
 
 from app.services.search.cache import TTLCache
 
@@ -17,7 +19,7 @@ class Orchestrator:
         self.llm = OpenAIClient()
         self.cleantext = CleanText()
         self._profile = os.getenv("PROFILE_LATENCY", "0") == "1"
-        self._debug = os.getenv("ORCH_DEBUG", "0") == "1"
+        self._debug = 1
         self._max_search_queries = int(os.getenv("MAX_SEARCH_QUERIES", "3"))
 
         self._max_context_chars = int(os.getenv("ORCH_MAX_CONTEXT_CHARS", "8000"))
@@ -160,3 +162,12 @@ class Orchestrator:
         final_prompt = prompt.replace("{{user_history}}", history_text)
 
         return final_prompt
+        
+    def handle_scan(self, image_url: str) -> dict:
+        prompt = load_prompt("analyze_image.prompt")
+        raw = self.llm.image_scan(image_url, prompt)
+
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            raise ValueError(f"Invalid JSON from image_scan:\n{raw}")
