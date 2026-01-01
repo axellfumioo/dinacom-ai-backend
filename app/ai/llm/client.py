@@ -17,14 +17,16 @@ class OpenAIClient:
             raise RuntimeError("OPENAI_API not found in env")
 
         try:
-            timeout_s = float(os.getenv("OPENAI_TIMEOUT_S", "6"))
+            # Image + JSON-mode requests can easily exceed a few seconds.
+            timeout_s = float(os.getenv("OPENAI_TIMEOUT_S", "60"))
         except Exception:
-            timeout_s = 6.0
+            timeout_s = 60.0
 
         try:
-            max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "0"))
+            # Default to a small retry budget for transient network issues.
+            max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "1"))
         except Exception:
-            max_retries = 0
+            max_retries = 1
 
         self._timeout_s = max(0.1, timeout_s)
         self._max_retries = max(0, max_retries)
@@ -100,14 +102,13 @@ class OpenAIClient:
         
         content = response.choices[0].message.content
         if content:
-            return content.strip()
-
-        
+            return content.strip()        
         
         retry = self.client.chat.completions.create(
             model=self.main_model,
             messages=[{"role": "user", "content": prompt}],
             max_completion_tokens=self.tools_config.get("max_completion_tokens", 2048),
+            temperature=0,
         )
 
         if not retry or not retry.choices or not retry.choices[0].message.content:
@@ -124,6 +125,7 @@ class OpenAIClient:
     ) -> str:
         config = dict(self.tools_config)
         config["max_completion_tokens"] = max_completion_tokens
+        config["temperature"] = 0
 
         if response_format is not None:
             config["response_format"] = response_format
@@ -143,6 +145,7 @@ class OpenAIClient:
 
         
         retry_config = dict(config)
+        retry_config["temperature"] = 0
         retry = self.client.chat.completions.create(
             model=self.main_model,
             messages=[{"role": "user", "content": prompt}],
@@ -151,5 +154,61 @@ class OpenAIClient:
 
         if not retry or not retry.choices or not retry.choices[0].message.content:
             raise RuntimeError(f"Empty content from OpenAI. Response: {response}")
+
+        return retry.choices[0].message.content.strip()
+    
+    def image_scan(
+        self,
+        image_url: str,
+        prompt: str = "Jelaskan isi gambar ini secara singkat dan faktual."
+    ) -> str:
+
+        response = self.client.chat.completions.create(
+            model=self.main_model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image_url}
+                        }
+                    ]
+                }
+            ],
+            max_completion_tokens=512,
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
+
+        if not response or not response.choices:
+            raise RuntimeError("Empty response from OpenAI (image_scan)")
+
+        content = response.choices[0].message.content
+        if content:
+            return content.strip()
+
+        retry = self.client.chat.completions.create(
+            model=self.fallback_model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image_url}
+                        }
+                    ]
+                }
+            ],
+            max_completion_tokens=512,
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
+
+        if not retry or not retry.choices or not retry.choices[0].message.content:
+            raise RuntimeError("Empty response from OpenAI fallback (image_scan)")
 
         return retry.choices[0].message.content.strip()

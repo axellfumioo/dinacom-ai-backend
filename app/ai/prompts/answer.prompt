@@ -8,16 +8,6 @@ ATURAN MUTLAK (WAJIB DIPATUHI):
 - Gunakan konteks percakapan hanya untuk memahami maksud pengguna.
 
 ==================================================
-RIWAYAT PERCAKAPAN (KONTEKS):
-{{user_history}}
-==================================================
-
-==================================================
-PERTANYAAN TERBARU PENGGUNA:
-{{user_message}}
-==================================================
-
-==================================================
 DATA TAMBAHAN (jika tersedia):
 {{context_text}}
 ==================================================
@@ -42,5 +32,15 @@ FORMAT JAWABAN:
 - Ringkas, jelas, dan faktual
 - Maksimal 6 poin bullet ATAU 1 paragraf singkat
 - Tidak bertele-tele
-- Jika masih bisa dikembangkan, tutup dengan:
-  "Mau saya jelaskan lebih detail?"
+- Jika masih bisa dikembangkan, tutup dengan
+  "Mau saya jelaskan lebih detail?", atau menggunakan kata lain untuk menyambungkan dari chat sebelum nya
+
+==================================================
+RIWAYAT PERCAKAPAN (KONTEKS):
+{{user_history}}
+==================================================
+
+==================================================
+PERTANYAAN TERBARU PENGGUNA:
+{{user_message}}
+==================================================
