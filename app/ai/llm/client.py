@@ -9,21 +9,21 @@ load_dotenv()
 class OpenAIClient:
     def __init__(
         self,
-        main_model: str = "gpt-5",
-        tools_model: str = "gpt-5-nano",
+        main_model: str = "gpt-4o-mini",
+        tools_model: str = "gpt-4o-mini",
     ):
         api_key = os.getenv("OPENAI_API")
         if not api_key:
             raise RuntimeError("OPENAI_API not found in env")
 
         try:
-            # Image + JSON-mode requests can easily exceed a few seconds.
+            
             timeout_s = float(os.getenv("OPENAI_TIMEOUT_S", "60"))
         except Exception:
             timeout_s = 60.0
 
         try:
-            # Default to a small retry budget for transient network issues.
+            
             max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "1"))
         except Exception:
             max_retries = 1
@@ -186,29 +186,7 @@ class OpenAIClient:
             raise RuntimeError("Empty response from OpenAI (image_scan)")
 
         content = response.choices[0].message.content
-        if content:
-            return content.strip()
+        if not content:
+            raise RuntimeError("Empty content from OpenAI (image_scan)")
 
-        retry = self.client.chat.completions.create(
-            model=self.fallback_model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": image_url}
-                        }
-                    ]
-                }
-            ],
-            max_completion_tokens=512,
-            temperature=0,
-            response_format={"type": "json_object"},
-        )
-
-        if not retry or not retry.choices or not retry.choices[0].message.content:
-            raise RuntimeError("Empty response from OpenAI fallback (image_scan)")
-
-        return retry.choices[0].message.content.strip()
+        return content.strip()

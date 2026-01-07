@@ -60,6 +60,10 @@ class Orchestrator:
         if self._debug:
             print(decision)
 
+        # Fast response: directly return without performing search or building long context.
+        if decision.get("fast_response"):
+            return (decision.get("fast_response_return") or "").strip()
+
         context_blocks = []
         
         if decision["need_search"]:

@@ -7,6 +7,14 @@ from app.ai.prompts.loader import load_prompt
 class DecisionService:
     def __init__(self):
         self.llm = OpenAIClient()
+        self.fast_response_keywords = [
+            "halo", "hai", "hi", "hello", "hey",
+            "pagi", "siang", "sore", "malam",
+            "assalamualaikum", "assalamu'alaikum",
+            "bro", "sis", "min",
+            "bantu", "bantuan", "tolong",
+            "urgent", "darurat", "segera", "cepat",
+        ]
         self.search_keywords = [
             "data", "statistik", "berapa", "jumlah", "harga",
             "hari ini", "sekarang", "terbaru", "terkini",
@@ -14,6 +22,32 @@ class DecisionService:
             "kasus", "tren", "naik", "turun",
             "perbandingan", "compare",
         ]
+
+    def _is_fast_response(self, message: str) -> bool:
+        """Heuristic to short-circuit for greetings / urgent quick-help requests."""
+        msg = (message or "").strip().lower()
+        if not msg:
+            return False
+
+        # very short greetings like: "hi", "halo", "p"
+        if len(msg) <= 4 and msg in {"hi", "hai", "halo", "hey", "yo", "p"}:
+            return True
+
+        return any(k in msg for k in self.fast_response_keywords)
+
+    def _generate_fast_response(self, user_message: str) -> str:
+        # Reuse existing prompt loader; no new prompt files.
+        tmpl = load_prompt("fast_response.prompt")
+        prompt = (
+            tmpl
+            .replace("{{user_message}}", user_message)
+            .replace("{{context_text}}", "")
+            .replace(
+                "{{user_history}}",
+                "(Mode: fast-response) Jawab singkat, ramah, dan langsung membantu. ",
+            )
+        )
+        return (self.llm.generate(prompt) or "").strip()
 
     def _need_search_fast(self, message: str) -> bool:
         msg = message.lower()
@@ -45,12 +79,24 @@ class DecisionService:
         ]
 
     def run(self, user_message: str) -> Dict:
-        
+        if self._is_fast_response(user_message):
+            fast = self._generate_fast_response(user_message)
+            return {
+                "need_search": False,
+                "fast_response": True,
+                "risk_level": "low",
+                "request_type": "fast_response",
+                "fast_response_return": fast,
+                "queries": [],
+            }
+
         if not self._need_search_fast(user_message):
             return {
                 "need_search": False,
+                "fast_response": False,
                 "risk_level": "low",
                 "request_type": "educational",
+                "fast_response_return": "",
                 "queries": [],
             }
 
@@ -59,7 +105,9 @@ class DecisionService:
 
         return {
             "need_search": True,
+            "fast_response": False,
             "risk_level": "low",
             "request_type": "informational",
+            "fast_response_return": "",
             "queries": queries,
         }
