@@ -6,7 +6,7 @@ import time
 
 decision = DecisionService()
 
-test = "apa gejala covid?"
+test = "Kalau misal gua makan telur tiap hari aman ga si?"
 
 start_time = time.time()
 result = decision.run(test)
