@@ -20,10 +20,10 @@ class Orchestrator:
         self.cleantext = CleanText(llm=self.llm)
         self._profile = os.getenv("PROFILE_LATENCY", "0") == "1"
         try:
-            self._debug = int(os.getenv("ORCH_DEBUG", "0"))
+            self._debug = int(os.getenv("ORCH_DEBUG", "1"))
         except Exception:
             self._debug = 0
-        self._max_search_queries = int(os.getenv("MAX_SEARCH_QUERIES", "3"))
+        self._max_search_queries = int(os.getenv("MAX_SEARCH_QUERIES", "2"))
 
         self._max_context_chars = int(os.getenv("ORCH_MAX_CONTEXT_CHARS", "8000"))
         self._max_history_chars = int(os.getenv("ORCH_MAX_HISTORY_CHARS", "4000"))
@@ -58,7 +58,7 @@ class Orchestrator:
             total += len(line)
         return "".join(reversed(parts))
 
-    def handle_chat(self, user_message: str, chat_history: Optional[List[Dict[str, str]]] = None) -> str:
+    def handle_chat(self, user_message: str, chat_history: Optional[List[Dict[str, str]]] = None) -> dict:
         t0 = time.perf_counter()
         decision = self.decision.run(user_message)
         t_decision = time.perf_counter()
@@ -67,8 +67,11 @@ class Orchestrator:
             print(decision)
 
         
-        if decision.get("fast_response"):
-            return (decision.get("fast_response_return") or "").strip()
+        if decision.get("fast_response") and not decision.get("need_search"):
+            return {
+                "answer": (decision.get("fast_response_return") or "").strip(),
+                "sources": []
+            }
 
         context_blocks = []
         
@@ -91,7 +94,7 @@ class Orchestrator:
 
         t_search = time.perf_counter()
 
-        prompt = self._build_prompt(user_message, context_blocks, chat_history)
+        prompt, sources = self._build_prompt(user_message, context_blocks, chat_history)
 
         if self._debug:
             print(prompt)
@@ -119,10 +122,15 @@ class Orchestrator:
                 f"llm={(t_done - t_prompt) * 1000:.0f} "
                 f"total={(t_done - t0) * 1000:.0f}"
             )
-        return answer
+        
+        return {
+            "answer": answer,
+            "sources": sources
+        }
 
-    def _build_prompt(self, user_message: str, contexts: list, chat_history="") -> str:
+    def _build_prompt(self, user_message: str, contexts: list, chat_history="") -> tuple[str, list[dict]]:
         seen_urls = set()
+        sources_list = []
         context_text = ""
         clean_prompt = ""
         
@@ -144,6 +152,11 @@ class Orchestrator:
                     continue
                 
                 seen_urls.add(url)
+                sources_list.append({
+                    "url": url,
+                    "title": r.get("title", ""),
+                    "query": ctx['query']
+                })
                 
                 context_text += f"- Source: {r['url']}\n"
                 content_trimmed = (r.get("content", "") or "")[: self._max_source_chars]
@@ -171,7 +184,7 @@ class Orchestrator:
             
         final_prompt = prompt.replace("{{user_history}}", history_text)
 
-        return final_prompt
+        return final_prompt, sources_list
         
     def handle_scan(self, image_url: str) -> dict:
         t0 = time.perf_counter()

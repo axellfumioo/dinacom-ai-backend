@@ -1,13 +1,17 @@
 import json
 import os
+import hashlib
 from typing import Dict, List
 from app.ai.llm.client import OpenAIClient
 from app.ai.prompts.loader import load_prompt
+from app.services.search.cache import TTLCache
 
 
 class DecisionService:
     def __init__(self, llm: OpenAIClient | None = None):
         self.llm = llm or OpenAIClient()
+        decision_cache_ttl = int(os.getenv("DECISION_CACHE_TTL_S", "300"))
+        self._decision_cache = TTLCache(ttl=decision_cache_ttl) if decision_cache_ttl > 0 else None
         self.fast_response_keywords = [
             "halo", "hai", "hi", "hello", "hey",
             "pagi", "siang", "sore", "malam",
@@ -58,9 +62,9 @@ class DecisionService:
         prompt = prompt_template.replace("{{user_message}}", user_message)
 
         try:
-            max_tokens = int(os.getenv("DECISION_QUERY_MAX_TOKENS", "192"))
+            max_tokens = int(os.getenv("DECISION_QUERY_MAX_TOKENS", "128"))
         except Exception:
-            max_tokens = 192
+            max_tokens = 128
 
         raw = self.llm.tools_with_limits(
             prompt,
@@ -84,9 +88,35 @@ class DecisionService:
         ]
 
     def run(self, user_message: str) -> Dict:
-        if self._is_fast_response(user_message):
+        
+        if self._decision_cache is not None:
+            cache_key = hashlib.sha256(user_message.lower().strip().encode("utf-8")).hexdigest()
+            cached = self._decision_cache.get(cache_key)
+            if cached:
+                return cached
+        
+        is_fast = self._is_fast_response(user_message)
+        needs_search = self._need_search_fast(user_message)
+        
+        
+        if is_fast and needs_search:
+            queries = self._generate_queries(user_message)
+            result = {
+                "need_search": True,
+                "fast_response": True,
+                "risk_level": "low",
+                "request_type": "fast_response_with_search",
+                "fast_response_return": "",
+                "queries": queries,
+            }
+            if self._decision_cache is not None:
+                self._decision_cache.set(cache_key, result)
+            return result
+        
+        
+        if is_fast and not needs_search:
             fast = self._generate_fast_response(user_message)
-            return {
+            result = {
                 "need_search": False,
                 "fast_response": True,
                 "risk_level": "low",
@@ -94,9 +124,13 @@ class DecisionService:
                 "fast_response_return": fast,
                 "queries": [],
             }
+            if self._decision_cache is not None:
+                self._decision_cache.set(cache_key, result)
+            return result
 
-        if not self._need_search_fast(user_message):
-            return {
+        
+        if not needs_search:
+            result = {
                 "need_search": False,
                 "fast_response": False,
                 "risk_level": "low",
@@ -104,11 +138,14 @@ class DecisionService:
                 "fast_response_return": "",
                 "queries": [],
             }
+            if self._decision_cache is not None:
+                self._decision_cache.set(cache_key, result)
+            return result
 
         
         queries = self._generate_queries(user_message)
 
-        return {
+        result = {
             "need_search": True,
             "fast_response": False,
             "risk_level": "low",
@@ -116,3 +153,6 @@ class DecisionService:
             "fast_response_return": "",
             "queries": queries,
         }
+        if self._decision_cache is not None:
+            self._decision_cache.set(cache_key, result)
+        return result
