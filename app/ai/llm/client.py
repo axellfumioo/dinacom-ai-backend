@@ -1,5 +1,4 @@
 from openai import OpenAI
-from google.genai import types
 from dotenv import load_dotenv
 from app.ai.llm.root_prompts.loader import load_prompt
 import os
@@ -43,18 +42,36 @@ class OpenAIClient:
         self.fallback_model = os.getenv("OPENAI_FALLBACK_MODEL", "gpt-4o-mini")
 
         try:
-            main_max_tokens = int(os.getenv("OPENAI_MAIN_MAX_TOKENS", "768"))
+            main_temperature = float(os.getenv("OPENAI_MAIN_TEMPERATURE", "0"))
         except Exception:
-            main_max_tokens = 768
+            main_temperature = 0.0
+
+        try:
+            main_max_tokens = int(os.getenv("OPENAI_MAIN_MAX_TOKENS", "512"))
+        except Exception:
+            main_max_tokens = 512
 
         self.main_config = {
             "max_completion_tokens": main_max_tokens,
+            "temperature": main_temperature,
         }
         
         
         self.tools_model = tools_model
+
+        try:
+            tools_temperature = float(os.getenv("OPENAI_TOOLS_TEMPERATURE", "0"))
+        except Exception:
+            tools_temperature = 0.0
+
+        try:
+            tools_max_tokens = int(os.getenv("OPENAI_TOOLS_MAX_TOKENS", "2048"))
+        except Exception:
+            tools_max_tokens = 2048
+
         self.tools_config = {
-            "max_completion_tokens": 2048,
+            "max_completion_tokens": tools_max_tokens,
+            "temperature": tools_temperature,
         }
     
     def generate(self, prompt: str) -> str:
@@ -162,9 +179,15 @@ class OpenAIClient:
         image_url: str,
         prompt: str = "Jelaskan isi gambar ini secara singkat dan faktual."
     ) -> str:
+        
+        image_model = os.getenv("OPENAI_IMAGE_MODEL", "gpt-4o-mini")
+        try:
+            image_max_tokens = int(os.getenv("OPENAI_IMAGE_MAX_TOKENS", "256"))
+        except Exception:
+            image_max_tokens = 256
 
         response = self.client.chat.completions.create(
-            model="gpt-5.2",
+            model=image_model,
             messages=[
                 {
                     "role": "user",
@@ -177,7 +200,7 @@ class OpenAIClient:
                     ]
                 }
             ],
-            max_completion_tokens=512,
+            max_completion_tokens=image_max_tokens,
             temperature=0,
             response_format={"type": "json_object"},
         )

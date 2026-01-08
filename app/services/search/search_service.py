@@ -45,9 +45,13 @@ def search_and_extract(query: str):
         return cached
 
     urls = google_search(query)
+    
+    seen: set[str] = set()
+    urls = [u for u in urls if not (u in seen or seen.add(u))]
     urls = urls[: max(1, min(_MAX_URLS_PER_QUERY, len(urls)))]
 
-    contents = []
+    contents: list[dict] = []
+    seen_result_urls: set[str] = set()
     best: Optional[dict] = None
     
     
@@ -75,37 +79,25 @@ def search_and_extract(query: str):
                     print(f"URL {url} generated an exception: {exc}")
                     text = "[ERROR extracting] exception"
 
+                if url in seen_result_urls:
+                    continue
+                seen_result_urls.add(url)
+
                 item = {"url": url, "content": (text or "")[:3000]}
                 contents.append(item)
 
                 if best is None and _is_usable_content(text or ""):
                     best = item
+                    
                     break
         except Exception:
             
             pass
-
-        
-        for f in future_to_url:
-            if not f.done():
-                f.cancel()
-            url = future_to_url[future]
-            try:
-                text = future.result()
-            except Exception as exc:
-                print(f"URL {url} generated an exception: {exc}")
-                text = "[ERROR extracting] exception"
-
-            item = {"url": url, "content": (text or "")[:3000]}
-            contents.append(item)
-
-            if best is None and _is_usable_content(text or ""):
-                best = item
-                
-                for f in future_to_url:
-                    if f is not future:
-                        f.cancel()
-                break
+        finally:
+            
+            for f in future_to_url:
+                if not f.done():
+                    f.cancel()
 
     if best is not None:
         contents = [best]
