@@ -1,12 +1,13 @@
 import json
+import os
 from typing import Dict, List
 from app.ai.llm.client import OpenAIClient
 from app.ai.prompts.loader import load_prompt
 
 
 class DecisionService:
-    def __init__(self):
-        self.llm = OpenAIClient()
+    def __init__(self, llm: OpenAIClient | None = None):
+        self.llm = llm or OpenAIClient()
         self.fast_response_keywords = [
             "halo", "hai", "hi", "hello", "hey",
             "pagi", "siang", "sore", "malam",
@@ -24,19 +25,18 @@ class DecisionService:
         ]
 
     def _is_fast_response(self, message: str) -> bool:
-        """Heuristic to short-circuit for greetings / urgent quick-help requests."""
         msg = (message or "").strip().lower()
         if not msg:
             return False
 
-        # very short greetings like: "hi", "halo", "p"
+        
         if len(msg) <= 4 and msg in {"hi", "hai", "halo", "hey", "yo", "p"}:
             return True
 
         return any(k in msg for k in self.fast_response_keywords)
 
     def _generate_fast_response(self, user_message: str) -> str:
-        # Reuse existing prompt loader; no new prompt files.
+        
         tmpl = load_prompt("fast_response.prompt")
         prompt = (
             tmpl
@@ -57,9 +57,14 @@ class DecisionService:
         prompt_template = load_prompt("search_query.prompt")
         prompt = prompt_template.replace("{{user_message}}", user_message)
 
+        try:
+            max_tokens = int(os.getenv("DECISION_QUERY_MAX_TOKENS", "192"))
+        except Exception:
+            max_tokens = 192
+
         raw = self.llm.tools_with_limits(
             prompt,
-            max_completion_tokens=512,
+            max_completion_tokens=max(64, max_tokens),
             response_format={"type": "json_object"},
         )
 

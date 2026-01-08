@@ -7,4 +7,5 @@ pydantic-settings
 requests
 beautifulsoup4
 lxml
+pypdf
 google-genai

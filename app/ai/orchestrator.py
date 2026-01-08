@@ -15,11 +15,14 @@ from app.services.search.cache import TTLCache
 
 class Orchestrator:
     def __init__(self):
-        self.decision = DecisionService()
         self.llm = OpenAIClient()
-        self.cleantext = CleanText()
+        self.decision = DecisionService(llm=self.llm)
+        self.cleantext = CleanText(llm=self.llm)
         self._profile = os.getenv("PROFILE_LATENCY", "0") == "1"
-        self._debug = 1
+        try:
+            self._debug = int(os.getenv("ORCH_DEBUG", "0"))
+        except Exception:
+            self._debug = 0
         self._max_search_queries = int(os.getenv("MAX_SEARCH_QUERIES", "3"))
 
         self._max_context_chars = int(os.getenv("ORCH_MAX_CONTEXT_CHARS", "8000"))
@@ -28,6 +31,9 @@ class Orchestrator:
 
         llm_cache_ttl = int(os.getenv("ORCH_LLM_CACHE_TTL_S", "0"))
         self._llm_cache = TTLCache(ttl=max(1, llm_cache_ttl)) if llm_cache_ttl > 0 else None
+
+        image_cache_ttl = int(os.getenv("ORCH_IMAGE_CACHE_TTL_S", "1800"))
+        self._image_cache = TTLCache(ttl=max(1, image_cache_ttl)) if image_cache_ttl > 0 else None
 
     def _truncate(self, text: str, max_chars: int) -> str:
         if not text or max_chars <= 0:
@@ -60,7 +66,7 @@ class Orchestrator:
         if self._debug:
             print(decision)
 
-        # Fast response: directly return without performing search or building long context.
+        
         if decision.get("fast_response"):
             return (decision.get("fast_response_return") or "").strip()
 
@@ -168,10 +174,40 @@ class Orchestrator:
         return final_prompt
         
     def handle_scan(self, image_url: str) -> dict:
+        t0 = time.perf_counter()
+        
+        
+        if self._image_cache is not None:
+            cache_key = hashlib.sha256(image_url.encode("utf-8", errors="ignore")).hexdigest()
+            cached = self._image_cache.get(cache_key)
+            if cached:
+                if self._profile:
+                    print(f"LATENCY(ms): image_scan=0 (cached) total={(time.perf_counter() - t0) * 1000:.0f}")
+                return cached
+        
+        t_prompt = time.perf_counter()
         prompt = load_prompt("analyze_image.prompt")
+        t_llm = time.perf_counter()
         raw = self.llm.image_scan(image_url, prompt)
+        t_parse = time.perf_counter()
 
         try:
-            return json.loads(raw)
+            result = json.loads(raw)
+            
+            
+            if self._image_cache is not None:
+                self._image_cache.set(cache_key, result)
+            
+            t_done = time.perf_counter()
+            if self._profile:
+                print(
+                    f"LATENCY(ms): "
+                    f"prompt={(t_llm - t_prompt) * 1000:.0f} "
+                    f"llm={(t_parse - t_llm) * 1000:.0f} "
+                    f"parse={(t_done - t_parse) * 1000:.0f} "
+                    f"total={(t_done - t0) * 1000:.0f}"
+                )
+            
+            return result
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON from image_scan:\n{raw}")
