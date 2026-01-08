@@ -12,9 +12,9 @@ url_cache = TTLCache(ttl=60 * 60 * 6)
 
 url_error_cache = TTLCache(ttl=int(os.getenv("SEARCH_URL_ERROR_CACHE_TTL_S", "60")))
 
-_MAX_URLS_PER_QUERY = int(os.getenv("SEARCH_MAX_URLS_PER_QUERY", "3"))
-_EXTRACT_WORKERS = int(os.getenv("SEARCH_EXTRACT_WORKERS", "6"))
-_SEARCH_TOTAL_BUDGET_S = float(os.getenv("SEARCH_TOTAL_BUDGET_S", "3"))
+_MAX_URLS_PER_QUERY = int(os.getenv("SEARCH_MAX_URLS_PER_QUERY", "2"))
+_EXTRACT_WORKERS = int(os.getenv("SEARCH_EXTRACT_WORKERS", "8"))
+_SEARCH_TOTAL_BUDGET_S = float(os.getenv("SEARCH_TOTAL_BUDGET_S", "2.5"))
 
 
 def _is_usable_content(text: str) -> bool:

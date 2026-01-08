@@ -47,9 +47,9 @@ class OpenAIClient:
             main_temperature = 0.0
 
         try:
-            main_max_tokens = int(os.getenv("OPENAI_MAIN_MAX_TOKENS", "512"))
+            main_max_tokens = int(os.getenv("OPENAI_MAIN_MAX_TOKENS", "384"))
         except Exception:
-            main_max_tokens = 512
+            main_max_tokens = 384
 
         self.main_config = {
             "max_completion_tokens": main_max_tokens,

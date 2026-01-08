@@ -13,8 +13,14 @@ class ChatRequest(BaseModel):
     message: str
     chat_history: Optional[List[Dict[str, str]]] = None
 
+class SourceInfo(BaseModel):
+    url: str
+    title: Optional[str] = ""
+    query: str
+
 class ChatResponse(BaseModel):
-    response: str
+    answer: str
+    sources: List[SourceInfo]
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, _: bool = Depends(verify_token)):
@@ -24,7 +30,7 @@ async def chat(request: ChatRequest, _: bool = Depends(verify_token)):
         
         
         response = await run_in_threadpool(orchestrator.handle_chat, request.message, request.chat_history)
-        return ChatResponse(response=response)
+        return ChatResponse(**response)
     
     except Exception as e:
         print(f"ERROR in chat endpoint: {str(e)}")
