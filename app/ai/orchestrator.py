@@ -35,6 +35,11 @@ class Orchestrator:
         image_cache_ttl = int(os.getenv("ORCH_IMAGE_CACHE_TTL_S", "1800"))
         self._image_cache = TTLCache(ttl=max(1, image_cache_ttl)) if image_cache_ttl > 0 else None
 
+        user_insight_cache_ttl = int(os.getenv("ORCH_USER_INSIGHT_CACHE_TTL_S", "900"))
+        self._user_insight_cache = (
+            TTLCache(ttl=max(1, user_insight_cache_ttl)) if user_insight_cache_ttl > 0 else None
+        )
+
     def _truncate(self, text: str, max_chars: int) -> str:
         if not text or max_chars <= 0:
             return ""
@@ -245,3 +250,95 @@ class Orchestrator:
             return result
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON from image_scan:\n{raw}")
+
+    def handle_user_insight(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a dict")
+
+        t0 = time.perf_counter()
+
+        payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        if self._user_insight_cache is not None:
+            cache_key = hashlib.sha256(payload_json.encode("utf-8", errors="ignore")).hexdigest()
+            cached = self._user_insight_cache.get(cache_key)
+            if cached:
+                if self._profile:
+                    print(
+                        f"LATENCY(ms): user_insight=0 (cached) total={(time.perf_counter() - t0) * 1000:.0f}"
+                    )
+                return cached
+        else:
+            cache_key = None
+
+        prompt_tmpl = load_prompt("user_insight.prompt")
+        prompt = prompt_tmpl.replace(
+            "{{payload_json}}",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        )
+
+        t_llm = time.perf_counter()
+        raw = self.llm.tools_with_limits(
+            prompt,
+            max_completion_tokens=int(os.getenv("USER_INSIGHT_MAX_TOKENS", "512")),
+            response_format={"type": "json_object"},
+        )
+        t_parse = time.perf_counter()
+
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError:
+            raise ValueError(f"Invalid JSON from user_insight:\n{raw}")
+
+        if not isinstance(result, dict):
+            raise ValueError("user_insight must return a JSON object")
+
+        required = [
+            "health_score",
+            "personal_ai_insight",
+            "ai_important_notice",
+            "confidence_level",
+        ]
+        missing = [k for k in required if k not in result]
+        if missing:
+            raise ValueError(f"user_insight missing keys: {missing}")
+
+        def _to_int(v) -> int:
+            if isinstance(v, bool):
+                raise ValueError("invalid int")
+            if isinstance(v, int):
+                return v
+            if isinstance(v, float):
+                return int(round(v))
+            if isinstance(v, str) and v.strip().isdigit():
+                return int(v.strip())
+            raise ValueError("invalid int")
+
+        try:
+            health_score = max(0, min(100, _to_int(result.get("health_score"))))
+            confidence_level = max(0, min(100, _to_int(result.get("confidence_level"))))
+        except Exception as e:
+            raise ValueError(f"Invalid numeric fields in user_insight: {e}")
+
+        personal_ai_insight = str(result.get("personal_ai_insight") or "").strip()
+        ai_important_notice = str(result.get("ai_important_notice") or "").strip()
+
+        normalized = {
+            "health_score": health_score,
+            "personal_ai_insight": personal_ai_insight,
+            "ai_important_notice": ai_important_notice,
+            "confidence_level": confidence_level,
+        }
+
+        if self._user_insight_cache is not None and cache_key is not None:
+            self._user_insight_cache.set(cache_key, normalized)
+
+        t_done = time.perf_counter()
+        if self._profile:
+            print(
+                f"LATENCY(ms): "
+                f"llm={(t_parse - t_llm) * 1000:.0f} "
+                f"parse={(t_done - t_parse) * 1000:.0f} "
+                f"total={(t_done - t0) * 1000:.0f}"
+            )
+
+        return normalized
