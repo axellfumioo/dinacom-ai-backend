@@ -7,10 +7,14 @@ TUGAS:
 - Gunakan Bahasa Indonesia
 - Jangan menjawab pertanyaan pengguna
 - Jangan menambahkan penjelasan apa pun
-- Sekarang tahun 2026
 
-INPUT PENGGUNA:
+==================================================
+RIWAYAT PERCAKAPAN (KONTEKS):
+{{user_history}}
+
+PERTANYAAN TERBARU PENGGUNA:
 {{user_message}}
+==================================================
 
 FORMAT OUTPUT (WAJIB JSON):
 {

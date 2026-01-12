@@ -2,7 +2,7 @@ from app.ai.decision import DecisionService
 from app.ai.llm.client import OpenAIClient
 from app.services.search.search_service import search_and_extract
 from app.ai.prompts.loader import load_prompt
-from app.ai.clean_text import CleanText
+# from app.ai.clean_text import CleanText
 from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
@@ -17,7 +17,7 @@ class Orchestrator:
     def __init__(self):
         self.llm = OpenAIClient()
         self.decision = DecisionService(llm=self.llm)
-        self.cleantext = CleanText(llm=self.llm)
+        # self.cleantext = CleanText(llm=self.llm)
         self._profile = os.getenv("PROFILE_LATENCY", "0") == "1"
         try:
             self._debug = int(os.getenv("ORCH_DEBUG", "1"))
@@ -45,22 +45,43 @@ class Orchestrator:
     def _format_history(self, chat_history: Optional[List[Dict[str, str]]]) -> str:
         if not chat_history:
             return ""
+
+        header = "[CHAT_HISTORY_START] (oldest -> newest)\n"
+        footer = "[CHAT_HISTORY_END]\n"
         
-        parts: list[str] = []
-        total = 0
-        for msg in reversed(chat_history):
+        parts_from_tail: list[str] = []
+        total = len(header) + len(footer)
+        truncated = False
+
+        n = len(chat_history)
+        for idx_from_end, msg in enumerate(reversed(chat_history), start=1):
+            original_index = n - idx_from_end + 1  # 1-based index in original list
             role = (msg or {}).get("role", "user")
-            content = (msg or {}).get("content", "")
-            line = f"{role}: {content}\n"
-            if total + len(line) > self._max_history_chars:
+            content = ((msg or {}).get("content", "") or "").strip()
+
+            entry = (
+                f"--- message {original_index}/{n} ---\n"
+                f"role: {role}\n"
+                f"content:\n{content}\n"
+            )
+
+            if total + len(entry) > self._max_history_chars:
+                truncated = True
                 break
-            parts.append(line)
-            total += len(line)
-        return "".join(reversed(parts))
+
+            parts_from_tail.append(entry)
+            total += len(entry)
+
+        parts = list(reversed(parts_from_tail))
+        if truncated:
+            parts.insert(0, "--- (older messages omitted due to ORCH_MAX_HISTORY_CHARS) ---\n")
+
+        return header + "".join(parts) + footer
 
     def handle_chat(self, user_message: str, chat_history: Optional[List[Dict[str, str]]] = None) -> dict:
         t0 = time.perf_counter()
-        decision = self.decision.run(user_message)
+        history_text = self._format_history(chat_history) if isinstance(chat_history, list) else (chat_history or "")
+        decision = self.decision.run(user_message, user_history=history_text)
         t_decision = time.perf_counter()
 
         if self._debug:
@@ -166,10 +187,10 @@ class Orchestrator:
         prompt = prompt_template.replace("{{user_message}}", user_message)
         
         
-        if context_text != "" and len(context_text) > 8000:
-            clean_prompt = self.cleantext.clean(context_text)
-        else:
-            clean_prompt = context_text
+        # if context_text != "" and len(context_text) > 8000:
+        #     clean_prompt = self.cleantext.clean(context_text)
+        # else:
+        clean_prompt = context_text
 
         clean_prompt = self._truncate(clean_prompt, self._max_context_chars)
 

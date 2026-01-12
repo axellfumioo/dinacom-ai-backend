@@ -53,13 +53,33 @@ class DecisionService:
         )
         return (self.llm.generate(prompt) or "").strip()
 
+    def _generate_fast_response_with_history(self, user_message: str, user_history: str) -> str:
+        tmpl = load_prompt("fast_response.prompt")
+        history_text = (user_history or "").strip()
+        if history_text:
+            history_text = "(Mode: fast-response) Jawab singkat, ramah, dan langsung membantu.\n" + history_text
+        else:
+            history_text = "(Mode: fast-response) Jawab singkat, ramah, dan langsung membantu."
+
+        prompt = (
+            tmpl
+            .replace("{{user_message}}", user_message)
+            .replace("{{context_text}}", "")
+            .replace("{{user_history}}", history_text)
+        )
+        return (self.llm.generate(prompt) or "").strip()
+
     def _need_search_fast(self, message: str) -> bool:
         msg = message.lower()
         return any(k in msg for k in self.search_keywords)
 
-    def _generate_queries(self, user_message: str) -> List[str]:
+    def _generate_queries(self, user_message: str, user_history: str = "") -> List[str]:
         prompt_template = load_prompt("search_query.prompt")
-        prompt = prompt_template.replace("{{user_message}}", user_message)
+        prompt = (
+            prompt_template
+            .replace("{{user_history}}", (user_history or "").strip())
+            .replace("{{user_message}}", user_message)
+        )
 
         try:
             max_tokens = int(os.getenv("DECISION_QUERY_MAX_TOKENS", "128"))
@@ -87,10 +107,11 @@ class DecisionService:
             if isinstance(q, str) and len(q.strip()) >= 3
         ]
 
-    def run(self, user_message: str) -> Dict:
+    def run(self, user_message: str, user_history: str = "") -> Dict:
         
         if self._decision_cache is not None:
-            cache_key = hashlib.sha256(user_message.lower().strip().encode("utf-8")).hexdigest()
+            cache_input = (user_message or "").lower().strip() + "\n" + (user_history or "").lower().strip()
+            cache_key = hashlib.sha256(cache_input.encode("utf-8")).hexdigest()
             cached = self._decision_cache.get(cache_key)
             if cached:
                 return cached
@@ -100,7 +121,7 @@ class DecisionService:
         
         
         if is_fast and needs_search:
-            queries = self._generate_queries(user_message)
+            queries = self._generate_queries(user_message, user_history=user_history)
             result = {
                 "need_search": True,
                 "fast_response": True,
@@ -115,7 +136,7 @@ class DecisionService:
         
         
         if is_fast and not needs_search:
-            fast = self._generate_fast_response(user_message)
+            fast = self._generate_fast_response_with_history(user_message, user_history=user_history)
             result = {
                 "need_search": False,
                 "fast_response": True,
@@ -143,7 +164,7 @@ class DecisionService:
             return result
 
         
-        queries = self._generate_queries(user_message)
+        queries = self._generate_queries(user_message, user_history=user_history)
 
         result = {
             "need_search": True,

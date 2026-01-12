@@ -9,7 +9,7 @@ def main() -> None:
 	decision = DecisionService()
 	test = "Kalau misal gua makan telur tiap hari aman ga si?"
 	start_time = time.time()
-	result = decision.run(test)
+	result = decision.run(test, user_history="")
 	end_time = time.time()
 	elapsed_time = (end_time - start_time) * 1000
 	print("\nUSER:", test)
