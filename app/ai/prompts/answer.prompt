@@ -7,16 +7,6 @@ ATURAN MUTLAK (WAJIB DIPATUHI):
 - JANGAN memberikan pengantar, pembuka, atau penjelasan meta.
 - Gunakan konteks percakapan hanya untuk memahami maksud pengguna.
 
-==================================================
-DATA TAMBAHAN (jika tersedia):
-{{context_text}}
-==================================================
-
-==================================================
-INFORMASI TAMBAHAN
-Sekarang tahun 2026
-==================================================
-
 LOGIKA WAJIB DALAM MENJAWAB:
 1. Jika DATA tersedia dan relevan:
    - Gunakan DATA sebagai sumber utama jawaban.
@@ -59,11 +49,14 @@ Jika topik sudah cukup jelas:
 - BOLEH TIDAK MEMBERI PENUTUP SAMA SEKALI.
 
 ==================================================
-RIWAYAT PERCAKAPAN (KONTEKS):
-{{user_history}}
+DATA TAMBAHAN (jika tersedia):
+{{context_text}}
 ==================================================
 
 ==================================================
+RIWAYAT PERCAKAPAN (KONTEKS):
+{{user_history}}
+
 PERTANYAAN TERBARU PENGGUNA:
 {{user_message}}
 ==================================================
