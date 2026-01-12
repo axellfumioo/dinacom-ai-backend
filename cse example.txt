@@ -1,31 +1,82 @@
-[CONTEXT] (harga emas antam hari ini)
-Source: https://anekalogam.co.id/
-Content:
-- Harga Emas LM Antam Certicard per gram (update 23 Desember 2025, 11:00): Harga Jual Rp2.780.000, Harga Beli Rp2.550.000 (untuk produksi tahun 2025).
-- Harga Buy-Back Emas LM Antam (produksi sebelum 2025): Harga bervariasi tergantung tahun produksi dan logo mind.id.
-- Harga Jual dan Beli Emas LM Antam per gram (update 23 Desember 2025, 11:00): 1 gram Jual Rp 2.980.000, Beli Rp 2.550.000; 100 gram Jual Rp 278.000.000, Beli Rp 255.000.000.
+{
+  "request_id": "req_20260112_001",
+  "user": {
+    "id": "user_123",
+    "name": "Dodi Mulya",
+    "age": 22,
+    "gender": "male"
+  },
 
-[CONTEXT] (harga emas perhiasan hari ini)
-Source: https://spesialgold.co.id/
-Content:
-- Harga Pembelian Emas Perhiasan per gram (Jumat, 26 Desember 2025, 15:18 WIB): 24k99,99% Rp2,397,000; 23k Rp1,992,000; 18k Rp1,563,000; 10k Rp887,000.
-- Harga Buyback Antam Certi (2025) per gram: 0.5 GM Rp 2.496.000, 1 GM Rp 2.496.000.
-- Harga Buyback LM UBS 99.99% per gram: Rp 2.361.000.
-- Harga perak perhiasan (925) per gram: Rp. 10.000.
-Content:
-- Harga Pembelian Emas Perhiasan per gram (Jumat, 26 Desember 2025, 15:18 WIB): 24k99,99% Rp2,397,000; 23k Rp1,992,000; 18k Rp1,563,000; 10k Rp887,000.
-- Harga Buyback Antam Certi (2025) per gram: 0.5 GM Rp 2.496.000, 1 GM Rp 2.496.000.
-Content:
-Content:
-- Harga Pembelian Emas Perhiasan per gram (Jumat, 26 Desember 2025, 15:18 WIB): 24k99,99% Rp2,397,000; 23k Rp1,992,000; 18k Rp1,563,000; 10k Rp887,000.
-Content:
-Content:
-- Harga Pembelian Emas Perhiasan per gram (Jumat, 26 Desember 2025, 15:18 WIB): 24k99,99% Rp2,397,000; 23k Rp1,992,000; 18k Rp1,563,000; 10k Rp887,000.
-- Harga Buyback Antam Certi (2025) per gram: 0.5 GM Rp 2.496.000, 1 GM Rp 2.496.000.
-- Harga Buyback LM UBS 99.99% per gram: Rp 2.361.000.
-- Harga perak perhiasan (925) per gram: Rp. 10.000.
+  "questionnaire": [
+    {
+      "question_id": "q1",
+      "question": "Bagaimana kondisi kesehatan kamu saat ini?",
+      "answer": "cukup"
+    },
+    {
+      "question_id": "q2",
+      "question": "Apakah kamu sedang mengalami keluhan kesehatan?",
+      "answer": "tidak"
+    },
+    {
+      "question_id": "q3",
+      "question": "Apakah kamu memiliki penyakit kronis?",
+      "answer": "tidak"
+    },
+    {
+      "question_id": "q4",
+      "question": "Seberapa sering kamu berolahraga?",
+      "answer": "jarang"
+    },
+    {
+      "question_id": "q5",
+      "question": "Bagaimana kualitas tidur kamu?",
+      "answer": "kurang"
+    },
+    {
+      "question_id": "q6",
+      "question": "Apakah kamu merokok?",
+      "answer": "tidak"
+    },
+    {
+      "question_id": "q7",
+      "question": "Bagaimana tingkat stres kamu akhir-akhir ini?",
+      "answer": "sedang"
+    },
+    {
+      "question_id": "q8",
+      "question": "Apakah kamu sering merasa kelelahan mental?",
+      "answer": "sering"
+    },
+    {
+      "question_id": "q9",
+      "question": "Apakah kamu mengonsumsi obat secara rutin?",
+      "answer": "tidak"
+    },
+    {
+      "question_id": "q10",
+      "question": "Apakah kamu memiliki alergi tertentu?",
+      "answer": "tidak"
+    }
+  ],
 
-USER QUESTION:
-harga emas hari ini
+  "daily_nutrition_summary": {
+    "calories_kcal": 720,
+    "nutrition": {
+      "carbs_g": 55,
+      "protein_g": 32,
+      "fat_g": 40
+    },
+    "vitamins": [
+      "Vitamin A",
+      "Vitamin C",
+      "Iron",
+      "Potassium"
+    ]
+  },
 
-Jawab secara ringkas, jelas, dan faktual.
+  "meta": {
+    "timezone": "Asia/Jakarta",
+    "data_completeness": 0.88
+  }
+}
