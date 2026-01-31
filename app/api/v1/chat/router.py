@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from app.ai.orchestrator import Orchestrator
 from app.dependency.deps import verify_token
 import traceback
@@ -21,6 +21,7 @@ class SourceInfo(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: List[SourceInfo]
+    decision: Dict[str, Any]
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, _: bool = Depends(verify_token)):

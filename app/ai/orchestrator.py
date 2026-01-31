@@ -96,7 +96,8 @@ class Orchestrator:
         if decision.get("fast_response") and not decision.get("need_search"):
             return {
                 "answer": (decision.get("fast_response_return") or "").strip(),
-                "sources": []
+                "sources": [],
+                "decision": decision,
             }
 
         context_blocks = []
@@ -151,7 +152,8 @@ class Orchestrator:
         
         return {
             "answer": answer,
-            "sources": sources
+            "sources": sources,
+            "decision": decision,
         }
 
     def _build_prompt(self, user_message: str, contexts: list, chat_history="") -> tuple[str, list[dict]]:
