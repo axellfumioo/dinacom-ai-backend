@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-WORKDIR /var/www/aibackend
+WORKDIR /var/www/aibackend/app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
 	PYTHONUNBUFFERED=1

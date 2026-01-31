@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+openai
+google-generativeai
+pydantic-settings
+requests
+beautifulsoup4
+lxml
+pypdf
+google-genai
