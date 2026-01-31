@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-WORKDIR /var/www/aibackend/app
+WORKDIR /var/www/aibackend
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
 	PYTHONUNBUFFERED=1
@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 8181
 
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8181"]
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8181"]
